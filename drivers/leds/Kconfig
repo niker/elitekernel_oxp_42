@@ -221,6 +221,13 @@ config LEDS_LP5521_HTC
 	  Driver provides direct control via LED class and interface for
 	  programming the engines. And this is for HTC projects.
 
+config LEDS_LP5521_HTC_multiplier
+	bool "LED off timer multiplier for LP5521"
+	depends on LEDS_LP5521_HTC
+	help
+	  This option allow to use a multiplier for the off timer of LED
+	  notifications (0 = infinite, else is normal time x multiplier.
+
 config LEDS_CLEVO_MAIL
 	tristate "Mail LED on Clevo notebook"
 	depends on LEDS_CLASS
