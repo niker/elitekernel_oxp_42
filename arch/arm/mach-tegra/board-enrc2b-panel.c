@@ -192,8 +192,8 @@ static bool kernel_1st_panel_init = true;
 #define BACKLIGHT_MAX 255
 
 #define ORIG_PWM_MAX 255
-#define ORIG_PWM_DEF 142
-#define ORIG_PWM_MIN 30
+#define ORIG_PWM_DEF 80
+#define ORIG_PWM_MIN 20
 
 #define MAP_PWM_MAX     255
 #define MAP_PWM_DEF     78
@@ -249,7 +249,7 @@ static struct platform_tegra_pwm_backlight_data enrc2b_disp1_backlight_data = {
 	.gpio_conf_to_sfio	= TEGRA_GPIO_PW1,
 	.switch_to_sfio		= &tegra_gpio_disable,
 	.max_brightness		= 255,
-	.dft_brightness		= 142,
+	.dft_brightness		= 80,
 	.notify		= enrc2b_backlight_notify,
 	.period			= 0xFF,
 	.clk_div		= 20,
@@ -258,6 +258,7 @@ static struct platform_tegra_pwm_backlight_data enrc2b_disp1_backlight_data = {
 	/* Only toggle backlight on fb blank notifications for disp1 */
 	.check_fb	= enrc2b_disp1_check_fb,
 	.backlight_status	= BACKLIGHT_ENABLE,
+	.dimming_enable	= true,
 	.cam_launch_bkl_value = 181,
 	.dimming_off_cmd = NULL,
 	.n_dimming_off_cmd = NULL,
@@ -364,7 +365,100 @@ static struct resource enrc2b_disp2_resources[] = {
 };
 
 static struct tegra_dc_sd_settings enrc2b_sd_settings = {
+#ifndef CONFIG_SMARTDIMMER
 	.enable = 0, /* Normal mode operation */
+#else
+	// smartdimmer config
+	// https://android.googlesource.com/kernel/tegra/+/a3afaafbd1075ed6ca3986a417282f7b2621bd75/arch/arm/mach-tegra/board-grouper-panel.c
+	.enable = 0, /* disabled by default. */
+    .use_auto_pwm = false,
+	.hw_update_delay = 0,
+	.bin_width = -1,
+	.aggressiveness = 1,
+	.phase_in_adjustments = true,
+	.use_vid_luma = false,
+	/* Default video coefficients */
+	.coeff = {5, 9, 2},
+	.fc = {0, 0},
+	/* Immediate backlight changes */
+	.blp = {1024, 255},
+	/* Gammas: R: 2.2 G: 2.2 B: 2.2 */
+	/* Default BL TF */
+	.bltf = {
+                        {
+                                {57, 65, 74, 83},
+                                {93, 103, 114, 126},
+                                {138, 151, 165, 179},
+                                {194, 209, 225, 242},
+                        },
+                        {
+                                {58, 66, 75, 84},
+                                {94, 105, 116, 127},
+                                {140, 153, 166, 181},
+                                {196, 211, 227, 244},
+                        },
+                        {
+                                {60, 68, 77, 87},
+                                {97, 107, 119, 130},
+                                {143, 156, 170, 184},
+                                {199, 215, 231, 248},
+                        },
+                        {
+                                {64, 73, 82, 91},
+                                {102, 113, 124, 137},
+                                {149, 163, 177, 192},
+                                {207, 223, 240, 255},
+                        },
+                },
+	/* Default LUT */
+	.lut = {
+                        {
+                                {250, 250, 250},
+                                {194, 194, 194},
+                                {149, 149, 149},
+                                {113, 113, 113},
+                                {82, 82, 82},
+                                {56, 56, 56},
+                                {34, 34, 34},
+                                {15, 15, 15},
+                                {0, 0, 0},
+                        },
+                        {
+                                {246, 246, 246},
+                                {191, 191, 191},
+                                {147, 147, 147},
+                                {111, 111, 111},
+                                {80, 80, 80},
+                                {55, 55, 55},
+                                {33, 33, 33},
+                                {14, 14, 14},
+                                {0, 0, 0},
+                        },
+                        {
+                                {239, 239, 239},
+                                {185, 185, 185},
+                                {142, 142, 142},
+                                {107, 107, 107},
+                                {77, 77, 77},
+                                {52, 52, 52},
+                                {30, 30, 30},
+                                {12, 12, 12},
+                                {0, 0, 0},
+                        },
+                        {
+                                {224, 224, 224},
+                                {173, 173, 173},
+                                {133, 133, 133},
+                                {99, 99, 99},
+                                {70, 70, 70},
+                                {46, 46, 46},
+                                {25, 25, 25},
+                                {7, 7, 7},
+                                {0, 0, 0},
+                        },
+                },
+    .sd_brightness = &sd_brightness,
+#endif
 	.bl_device = &enrc2b_disp1_backlight_device,
 };
 
@@ -393,6 +487,10 @@ static struct tegra_dc_out enrc2b_disp2_out = {
 	.disable	= enrc2b_hdmi_disable,
 	.postsuspend	= enrc2b_hdmi_vddio_disable,
 	.hotplug_init	= enrc2b_hdmi_vddio_enable,
+
+#ifndef CONFIG_SMARTDIMMER	
+	.sd_settings  = &enrc2b_sd_settings,
+#endif
 };
 
 static struct tegra_dc_platform_data enrc2b_disp2_pdata = {
@@ -4413,6 +4511,7 @@ int __init enrc2b_panel_init(void)
 			enrc2b_dsi.n_cabc_cmd = ARRAY_SIZE(hx_moving_mode_cmd);
 			enrc2b_dsi.dsi_cabc_moving_mode = hx_moving_mode_cmd;
 			enrc2b_dsi.dsi_cabc_still_mode = hx_still_mode_cmd;
+			enrc2b_disp1_backlight_data.dimming_enable = false;
 		break;
 		case PANEL_ID_SHARP_HX_C4:
 			enrc2b_dsi.n_init_cmd = ARRAY_SIZE(dsi_init_sharp_hx_c4_cmd);
@@ -4420,6 +4519,7 @@ int __init enrc2b_panel_init(void)
 			enrc2b_dsi.n_cabc_cmd = ARRAY_SIZE(hx_moving_mode_cmd);
 			enrc2b_dsi.dsi_cabc_moving_mode = hx_moving_mode_cmd;
 			enrc2b_dsi.dsi_cabc_still_mode = hx_still_mode_cmd;
+			enrc2b_disp1_backlight_data.dimming_enable = false;
 		break;
 		case PANEL_ID_SHARP_HX_C5:
 		case PANEL_ID_SHARP_HX:
@@ -4428,6 +4528,7 @@ int __init enrc2b_panel_init(void)
 			enrc2b_dsi.n_cabc_cmd = ARRAY_SIZE(hx_moving_mode_cmd);
 			enrc2b_dsi.dsi_cabc_moving_mode = hx_moving_mode_cmd;
 			enrc2b_dsi.dsi_cabc_still_mode = hx_still_mode_cmd;
+			enrc2b_disp1_backlight_data.dimming_enable = false;
 		break;
 		case PANEL_ID_SONY_NT_C1:
 			enrc2b_dsi.n_init_cmd = ARRAY_SIZE(dsi_init_sony_nt_c1_cmd);

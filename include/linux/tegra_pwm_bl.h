@@ -31,6 +31,7 @@ struct platform_tegra_pwm_backlight_data {
 	int (*check_fb)(struct device *dev, struct fb_info *info);
 	int backlight_mode;
 	int backlight_status;
+	bool dimming_enable;
 	int cam_launch_bkl_value;
 	u8 *dimming_off_cmd;
 	int n_dimming_off_cmd;

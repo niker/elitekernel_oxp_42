@@ -34,6 +34,10 @@ static unsigned int regulator_cur;
 
 static const unsigned int *system_edp_limits;
 
+#ifdef CONFIG_TEGRA3_VARIANT_CPU_OVERCLOCK
+extern int enable_oc;
+#endif
+
 /*
  * Temperature step size cannot be less than 4C because of hysteresis
  * delta
@@ -383,6 +387,13 @@ void __init tegra_init_cpu_edp_limits(unsigned int regulator_mA)
 		e[j].freq_limits[1] = (unsigned int)t[i+j].freq_limits[1] * 10000;
 		e[j].freq_limits[2] = (unsigned int)t[i+j].freq_limits[2] * 10000;
 		e[j].freq_limits[3] = (unsigned int)t[i+j].freq_limits[3] * 10000;
+#ifdef CONFIG_TEGRA3_VARIANT_CPU_OVERCLOCK
+		e[j].freq_limits_oc[0] = (unsigned int)t[i+j].freq_limits[0] * 10000;
+		e[j].freq_limits_oc[1] = (unsigned int)(t[i+j].freq_limits[1] + 10) * 10000;
+		e[j].freq_limits_oc[2] = (unsigned int)(t[i+j].freq_limits[2] + 10) * 10000;
+		e[j].freq_limits_oc[3] = (unsigned int)(t[i+j].freq_limits[3] + 10) * 10000;
+#endif
+
 	}
 
 	f = kmalloc(sizeof(struct tegra_edp_limits) * edp_limits_size,
@@ -464,6 +475,21 @@ void tegra_get_system_edp_limits(const unsigned int **limits)
 
 #ifdef CONFIG_DEBUG_FS
 
+static int t3_variant_debugfs_show(struct seq_file *s, void *data)
+{
+	int cpu_speedo_id = tegra_cpu_speedo_id();
+	int soc_speedo_id = tegra_soc_speedo_id();
+	int cpu_process_id = tegra_cpu_process_id();
+	int core_process_id = tegra_core_process_id();
+
+	seq_printf(s, "cpu_speedo_id => %d\n", cpu_speedo_id);
+	seq_printf(s, "soc_speedo_id => %d\n", soc_speedo_id);
+	seq_printf(s, "cpu_process_id => %d\n", cpu_process_id);
+	seq_printf(s, "core_process_id => %d\n", core_process_id);
+
+	return 0;
+}
+
 static int edp_limit_debugfs_show(struct seq_file *s, void *data)
 {
 	seq_printf(s, "%u\n", tegra_get_edp_limit());
@@ -478,12 +504,25 @@ static int edp_debugfs_show(struct seq_file *s, void *data)
 		   edp_limits == edp_default_limits ? "default " : "",
 		   regulator_cur);
 	for (i = 0; i < edp_limits_size; i++) {
-		seq_printf(s, "%4dC: %10u %10u %10u %10u\n",
+#ifdef CONFIG_TEGRA3_VARIANT_CPU_OVERCLOCK
+		if(enable_oc){
+			seq_printf(s, "%4dC: %10u %10u %10u %10u\n",
+			   edp_limits[i].temperature,
+			   edp_limits[i].freq_limits_oc[0],
+			   edp_limits[i].freq_limits_oc[1],
+			   edp_limits[i].freq_limits_oc[2],
+			   edp_limits[i].freq_limits_oc[3]);
+		} else {
+#endif
+			seq_printf(s, "%4dC: %10u %10u %10u %10u\n",
 			   edp_limits[i].temperature,
 			   edp_limits[i].freq_limits[0],
 			   edp_limits[i].freq_limits[1],
 			   edp_limits[i].freq_limits[2],
 			   edp_limits[i].freq_limits[3]);
+#ifdef CONFIG_TEGRA3_VARIANT_CPU_OVERCLOCK
+		}
+#endif
 	}
 
 	if (system_edp_limits) {
@@ -498,6 +537,10 @@ static int edp_debugfs_show(struct seq_file *s, void *data)
 	return 0;
 }
 
+static int t3_variant_debugfs_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, t3_variant_debugfs_show, inode->i_private);
+}
 
 static int edp_debugfs_open(struct inode *inode, struct file *file)
 {
@@ -509,6 +552,13 @@ static int edp_limit_debugfs_open(struct inode *inode, struct file *file)
 	return single_open(file, edp_limit_debugfs_show, inode->i_private);
 }
 
+
+static const struct file_operations t3_variant_debugfs_fops = {
+	.open 		= t3_variant_debugfs_open,
+	.read 		= seq_read,
+	.llseek 	= seq_lseek,
+	.release 	= single_release,
+};
 
 static const struct file_operations edp_debugfs_fops = {
 	.open		= edp_debugfs_open,
@@ -527,6 +577,11 @@ static const struct file_operations edp_limit_debugfs_fops = {
 static int __init tegra_edp_debugfs_init(void)
 {
 	struct dentry *d;
+
+	d = debugfs_create_file("t3_variant", S_IRUGO, NULL, NULL,
+				&t3_variant_debugfs_fops);
+	if (!d)
+		return -ENOMEM;
 
 	d = debugfs_create_file("edp", S_IRUGO, NULL, NULL,
 				&edp_debugfs_fops);

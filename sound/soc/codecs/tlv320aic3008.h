@@ -24,6 +24,8 @@
 #define AIC3008_MAX_REGS         128
 #define AIC3008_MAX_RETRY        10
 
+extern void set_aud_cpu_minfreq(unsigned int freq);
+
 /* control operations structure */
 struct aic3008_ctl_ops {
 	void (*tx_amp_enable)(int en);

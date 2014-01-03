@@ -23,6 +23,12 @@
 #include "cpu-tegra.h"
 #include "fuse.h"
 
+#include "tegra_pmqos.h"
+#include "../sound/soc/codecs/tlv320aic3008.h"
+
+static struct pm_qos_request_list ps_cpu_maxfreq_req;
+static struct pm_qos_request_list ps_cpu_maxcores_req;
+
 #define htc_perf_attr(attrbute) 				\
 static struct kobj_attribute attrbute##_attr = {	\
 	.attr	= {					\
@@ -33,28 +39,9 @@ static struct kobj_attribute attrbute##_attr = {	\
 	.store	= attrbute##_store,			\
 }
 
-#define DEF_TARGET_FREQ (760000)
-#define DEF_POKE_FREQ (1300000)
-#define DEF_POKE_MS (100)
-#define DEF_IDLE_MS (300)
-
-#ifndef CONFIG_POWER_SAVE_FREQ
-#define CONFIG_POWER_SAVE_FREQ (1150000)
-#endif
-unsigned int powersave_freq = CONFIG_POWER_SAVE_FREQ;
-
 #define FUSE_CPUIDDQ 0x118
-
-static char media_boost = 'N';
-static unsigned int orig_user_cap = 0;
-
-static int is_in_power_save = 0;
 static int is_power_save_policy = 0;
 
-DEFINE_MUTEX(poke_mutex);
-
-static struct pm_qos_request_list poke_cpu_req;
-static struct pm_qos_request_list cap_cpu_req;
 
 struct kobject *htc_perf_kobj;
 
@@ -93,96 +80,13 @@ static ssize_t cpu_temp_store(struct kobject *kobj,
 
 htc_perf_attr(cpu_temp);
 
-static ssize_t media_boost_freq_show(struct kobject *kobj,
-		struct kobj_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%c\n", media_boost);
-}
-
-static ssize_t media_boost_freq_store(struct kobject *kobj,
-		struct kobj_attribute *attr, const char *buf, size_t count)
-{
-	char value;
-	struct cpufreq_policy policy;
-	sscanf(buf, "%c", &value);
-
-	if ((value == 'n' || value == 'N') &&
-			(media_boost == 'n' || media_boost == 'N'))
-		return 0;
-
-	if ((value == 'y' || value == 'Y') &&
-			(media_boost == 'y' || media_boost == 'Y'))
-		return 0;
-
-	if ((value == 'l' || value == 'L') &&
-			(media_boost == 'l' || media_boost == 'L'))
-		return 0;
-
-	if ((value == 'v' || value == 'V') &&
-			(media_boost == 'v' || media_boost == 'V'))
-		return 0;
-
-	media_boost = value;
-
-	if (media_boost == 'y' || media_boost == 'Y') {
-
-		/* release user cap */
-		htc_get_cpu_user_cap(&orig_user_cap);
-		htc_set_cpu_user_cap(0);
-
-		/* To get policy of current cpu */
-		cpufreq_get_policy(&policy, smp_processor_id());
-
-		/* update frequency qos request */
-		pm_qos_update_request(&poke_cpu_req, (s32)1700000);
-
-		/* update frequency request right now */
-		cpufreq_driver_target(&policy,
-				1700000, CPUFREQ_RELATION_L);
-
-		pr_info("[htc_perf] Orig user cap is %d,, media_boost is %c",
-				orig_user_cap, media_boost);
-
-	} else if (media_boost == 'n' || media_boost == 'N' ) {
-
-		htc_set_cpu_user_cap(orig_user_cap);
-
-		/* restore default cpu frequency request */
-		pm_qos_update_request(&poke_cpu_req,
-				(s32)PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE);
-
-		pr_info("[htc_perf] Restore user cap to %d, media_boost is %c",
-				orig_user_cap, media_boost);
-
-	} else if (media_boost == 'l' || media_boost == 'L') {
-		/* release user cap */
-		htc_get_cpu_user_cap(&orig_user_cap);
-		htc_set_cpu_user_cap(640000);
-		pr_info("[htc_perf] lowP orig user cap is %d, media_boost is %c",
-				orig_user_cap, value );
-	} else if (media_boost == 'v' || media_boost == 'V') {
-		/* release user cap */
-		htc_get_cpu_user_cap(&orig_user_cap);
-		htc_set_cpu_user_cap(760000);
-		pr_info("[htc_perf] video orig user cap is %d, media_boost is %c",
-				orig_user_cap, value );
-	} else {
-		media_boost = 'N';
-	}
-
-	return count;
-}
-
-htc_perf_attr(media_boost_freq);
-
 static ssize_t power_save_show(struct kobject *kobj,
 		struct kobj_attribute *attr, char *buf)
 {
 	char value = 'N';
 
-	if(is_in_power_save)
+	if(tegra_pmqos_powersave == 1)
 		value = 'Y';
-
 	if(is_power_save_policy)
 		value = 'T';
 
@@ -198,30 +102,46 @@ static ssize_t power_save_store(struct kobject *kobj,
 	switch(value) {
 	case 'n':
 	case 'N':
-		if (is_in_power_save) {
-			pr_info("[htc_perf] restore user_cap");
-			pm_qos_update_request(&cap_cpu_req,
-					(s32)PM_QOS_CPU_FREQ_MAX_DEFAULT_VALUE);
-			is_in_power_save = 0;
+		tegra_pmqos_powersave = 0;
+		update_tegra_pmqos_freqs();
+		if(tegra_pmqos_audio == 1)
+		{
+			set_aud_cpu_minfreq(T3_CPU_MIN_FREQ);
 		}
+		else
+		{
+			set_aud_cpu_minfreq(PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE);
+		}
+			
+		pm_qos_update_request(&ps_cpu_maxfreq_req, (s32)PM_QOS_CPU_FREQ_MAX_DEFAULT_VALUE);
+		pm_qos_update_request(&ps_cpu_maxcores_req, (s32)PM_QOS_MAX_ONLINE_CPUS_DEFAULT_VALUE);
+		
+		cpufreq_qos_cap_policy();
+		
 		break;
-
 	case 'y':
 	case 'Y':
-		if (!is_in_power_save) {
-			pr_info("[htc_perf] set user_cap");
-			/* enable user cap */
-			pm_qos_update_request(&cap_cpu_req, (s32)powersave_freq);
-			is_in_power_save = 1;
+		tegra_pmqos_powersave = 1;
+		update_tegra_pmqos_freqs();
+		
+		if(tegra_pmqos_audio == 1)
+		{
+			set_aud_cpu_minfreq(T3_CPU_MIN_FREQ);
 		}
+		else
+		{
+			set_aud_cpu_minfreq(PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE);
+		}
+			
+		pm_qos_update_request(&ps_cpu_maxfreq_req, (s32)PS_T3_CPU_MAX_FREQ);
+		pm_qos_update_request(&ps_cpu_maxcores_req, (s32)PS_T3_CPU_MAX_CORES);
+		
+		cpufreq_qos_cap_policy();
+		
 		break;
 	case 't':
 	case 'T':
-		if(!is_power_save_policy) {
-			pr_info("[htc_perf] set policy cap");
-			pm_qos_update_request(&cap_cpu_req, (s32)640000);
-			is_power_save_policy = 1;
-		}
+
 		break;
 	default:
 		pr_info("[htc_perf] Default, return;");
@@ -272,29 +192,19 @@ EXPORT_SYMBOL(get_cpu_debug);
 
 void restoreCap(int on)
 {
-	if (is_power_save_policy) {
-		if (is_in_power_save) {
-			pm_qos_update_request(&cap_cpu_req, (s32)1000000);
-		} else {
-			pm_qos_update_request(&cap_cpu_req,
-						(s32)PM_QOS_CPU_FREQ_MAX_DEFAULT_VALUE);
-		}
-		is_power_save_policy = 0;
-	}
+
 }
 EXPORT_SYMBOL(restoreCap);
 
 unsigned int get_powersave_freq(){
 
-    if (is_in_power_save)
-        return powersave_freq;
+    if (tegra_pmqos_powersave == 1)
+        return T3_LP_MAX_FREQ;
 
     return 0;
 }
 EXPORT_SYMBOL(get_powersave_freq);
-
 static struct attribute * g[] = {
-	&media_boost_freq_attr.attr,
 	&cpu_temp_attr.attr,
 	&power_save_attr.attr,
 	&cpu_debug_attr.attr,
@@ -309,17 +219,15 @@ static struct attribute_group attr_group = {
 
 static int __init htc_perf_init(void)
 {
+
+	pm_qos_add_request(&ps_cpu_maxfreq_req, PM_QOS_CPU_FREQ_MAX, (s32)PM_QOS_CPU_FREQ_MAX_DEFAULT_VALUE);
+	pm_qos_add_request(&ps_cpu_maxcores_req, PM_QOS_MAX_ONLINE_CPUS, (s32)PM_QOS_MAX_ONLINE_CPUS_DEFAULT_VALUE);
+
+
 	pr_info("[htc_perf] htc_perf_init\n");
         htc_perf_kobj = kobject_create_and_add("htc", NULL);
 
-	pm_qos_add_request(&poke_cpu_req,
-			PM_QOS_CPU_FREQ_MIN,
-			(s32)PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE);
-	pm_qos_add_request(&cap_cpu_req,
-			PM_QOS_CPU_FREQ_MAX,
-			(s32)PM_QOS_CPU_FREQ_MAX_DEFAULT_VALUE);
-
-        if (!htc_perf_kobj)
+    if (!htc_perf_kobj)
 		return -ENOMEM;
 
 	return sysfs_create_group(htc_perf_kobj, &attr_group);

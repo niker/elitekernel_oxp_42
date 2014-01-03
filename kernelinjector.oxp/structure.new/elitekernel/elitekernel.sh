@@ -26,6 +26,19 @@ touch /data/local/em_modules_deployed
 # feed urandom data to /dev/random to avoid system blocking (potential security risk, use at own peril!)
 /elitekernel/rngd --rng-device=/dev/urandom --random-device=/dev/random --background --feed-interval=60
 
+# startup time tweaks:
+
+# enable smartdimmer
+echo "1" > /sys/devices/tegradc.0/smartdimmer/enable
+
+#I/O tweaks
+mount -o async,remount,noatime,nodiratime,delalloc,noauto_da_alloc,barrier=0,nobh /cache /cache
+mount -o async,remount,noatime,nodiratime,delalloc,noauto_da_alloc,barrier=0,nobh /data /data
+mount -o async,remount,noatime,nodiratime,delalloc,noauto_da_alloc,barrier=0,nobh /sd-ext /sd-ext
+mount -o async,remount,noatime,nodiratime,delalloc,noauto_da_alloc,barrier=0,nobh /devlog /devlog
+echo "2048" > /sys/block/mmcblk0/bdi/read_ahead_kb;
+echo "2048" > /sys/block/mmcblk0/queue/read_ahead_kb;
+
 # activate delayed config to override ROM
 /system/xbin/busybox nohup /system/bin/sh /elitekernel/elitekernel_delayed.sh 2>&1 >/dev/null &
 

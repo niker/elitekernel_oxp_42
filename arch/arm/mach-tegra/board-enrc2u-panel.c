@@ -257,6 +257,7 @@ static struct platform_tegra_pwm_backlight_data enrc2u_disp1_backlight_data = {
 	/* Only toggle backlight on fb blank notifications for disp1 */
 	.check_fb	= enrc2u_disp1_check_fb,
 	.backlight_status	= BACKLIGHT_ENABLE,
+	.dimming_enable	= true,
 };
 
 static struct platform_device enrc2u_disp1_backlight_device = {
@@ -4397,6 +4398,7 @@ int __init enrc2u_panel_init(void)
 			enrc2u_dsi.n_cabc_cmd = ARRAY_SIZE(hx_moving_mode_cmd);
 			enrc2u_dsi.dsi_cabc_moving_mode = hx_moving_mode_cmd;
 			enrc2u_dsi.dsi_cabc_still_mode = hx_still_mode_cmd;
+			enrc2u_disp1_backlight_data.dimming_enable = false;
 		break;
 		case PANEL_ID_SHARP_HX_C4:
 			enrc2u_dsi.n_init_cmd = ARRAY_SIZE(dsi_init_sharp_hx_c4_cmd);
@@ -4404,6 +4406,7 @@ int __init enrc2u_panel_init(void)
 			enrc2u_dsi.n_cabc_cmd = ARRAY_SIZE(hx_moving_mode_cmd);
 			enrc2u_dsi.dsi_cabc_moving_mode = hx_moving_mode_cmd;
 			enrc2u_dsi.dsi_cabc_still_mode = hx_still_mode_cmd;
+			enrc2u_disp1_backlight_data.dimming_enable = false;
 		break;
 		case PANEL_ID_SHARP_HX_C5:
 		case PANEL_ID_SHARP_HX:
@@ -4412,6 +4415,7 @@ int __init enrc2u_panel_init(void)
 			enrc2u_dsi.n_cabc_cmd = ARRAY_SIZE(hx_moving_mode_cmd);
 			enrc2u_dsi.dsi_cabc_moving_mode = hx_moving_mode_cmd;
 			enrc2u_dsi.dsi_cabc_still_mode = hx_still_mode_cmd;
+			enrc2u_disp1_backlight_data.dimming_enable = false;
 		break;
 		case PANEL_ID_SONY_NT_C1:
 			enrc2u_dsi.n_init_cmd = ARRAY_SIZE(dsi_init_sony_nt_c1_cmd);

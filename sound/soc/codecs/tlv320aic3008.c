@@ -38,6 +38,10 @@
 #include <linux/spi-tegra.h>
 #include <linux/pm_qos_params.h>
 
+#include <linux/cpufreq.h>
+#include "../arch/arm/mach-tegra/tegra_pmqos.h"
+
+
 #undef LOG_TAG
 #define LOG_TAG "AUD"
 
@@ -59,6 +63,30 @@
 #endif
 
 #define AUD_CPU_FREQ_MIN 102000
+static unsigned int audio_min_freq = AUD_CPU_FREQ_MIN;
+
+static int audio_min_freq_set(const char *arg, const struct kernel_param *kp)
+{
+	unsigned int tmp;
+
+	if (1 != sscanf(arg, "%u", &tmp))
+		return -EINVAL;
+		
+	audio_min_freq = tmp;
+    pr_info("audio_min_freq %u\n", audio_min_freq);
+   	return 0;
+}
+
+static int audio_min_freq_get(char *buffer, const struct kernel_param *kp)
+{
+	return param_get_uint(buffer, kp);
+}
+
+static struct kernel_param_ops audio_min_freq_ops = {
+	.set = audio_min_freq_set,
+	.get = audio_min_freq_get,
+};
+module_param_cb(audio_min_freq, &audio_min_freq_ops, &audio_min_freq, 0644);
 
 /* for quattro --- */
 int64_t pwr_up_time;
@@ -417,17 +445,30 @@ void aic3008_votecpuminfreq(bool bflag)
     boldCPUMinReq = bflag;
     if (bflag)
     {
-        pm_qos_update_request(&aud_cpu_minfreq_req, (s32)AUD_CPU_FREQ_MIN);
-        AUD_INFO("VoteMinFreqS:%d", AUD_CPU_FREQ_MIN);
+		tegra_pmqos_audio = 1;
+		update_tegra_pmqos_freqs();
+        set_aud_cpu_minfreq(T3_CPU_MIN_FREQ);
+        AUD_DBG("VoteMinFreqS:%d\n", T3_CPU_MIN_FREQ);
     }
     else
     {
-        pm_qos_update_request(&aud_cpu_minfreq_req, (s32)PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE);
-        AUD_INFO("VoteMinFreqE:%d", PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE);
+		tegra_pmqos_audio = 0;
+		update_tegra_pmqos_freqs();
+        set_aud_cpu_minfreq(PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE);
+        AUD_DBG("VoteMinFreqE:%d\n", PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE);
+
     }
 
     return;
 }
+
+void set_aud_cpu_minfreq(unsigned int freq)
+{
+	pm_qos_update_request(&aud_cpu_minfreq_req, (s32)freq);
+	cpufreq_qos_cap_policy();
+}
+
+
 
 void aic3008_CodecInit()
 {

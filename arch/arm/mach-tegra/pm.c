@@ -73,6 +73,8 @@
 #include "dvfs.h"
 #include "cpu-tegra.h"
 
+#include "tegra_pmqos.h"
+
 struct suspend_context {
 	/*
 	 * The next 7 values are referenced by offset in __restart_plls
@@ -179,7 +181,6 @@ struct suspend_context tegra_sctx;
 #define MC_SECURITY_SIZE	0x70
 #define MC_SECURITY_CFG2	0x7c
 
-#define AWAKE_CPU_FREQ_MIN	51000
 static struct pm_qos_request_list awake_cpu_freq_req;
 
 /*
@@ -1138,7 +1139,7 @@ void __init tegra_init_suspend(struct tegra_suspend_platform_data *plat)
 	tegra_cpu_rail = tegra_dvfs_get_rail_by_name("vdd_cpu");
 	tegra_core_rail = tegra_dvfs_get_rail_by_name("vdd_core");
 	pm_qos_add_request(&awake_cpu_freq_req, PM_QOS_CPU_FREQ_MIN,
-			   AWAKE_CPU_FREQ_MIN);
+			   T3_CPU_MIN_FREQ);
 
 	tegra_pclk = clk_get_sys(NULL, "pclk");
 	BUG_ON(IS_ERR(tegra_pclk));
@@ -1416,7 +1417,7 @@ static void pm_late_resume(struct early_suspend *h)
 	cancel_delayed_work(&delayed_adjust);
 	if (clk_wake)
 		clk_enable(clk_wake);
-	pm_qos_update_request(&awake_cpu_freq_req, (s32)AWAKE_CPU_FREQ_MIN);
+	pm_qos_update_request(&awake_cpu_freq_req, (s32)T3_CPU_MIN_FREQ);
 	mutex_unlock(&early_suspend_lock);
 }
 

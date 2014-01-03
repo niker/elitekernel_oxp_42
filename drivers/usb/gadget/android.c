@@ -37,7 +37,7 @@
 #include "gadget_chips.h"
 
 
-#define PM_QOS_USB_TP_CPU_FREQ 910
+#define PM_QOS_USB_TP_CPU_FREQ 475000
 static struct pm_qos_request_list pm_qos_req_tp;
 
 enum {
@@ -62,7 +62,7 @@ static int os_type;
 #include "epautoconf.c"
 #include "composite.c"
 
-
+#include "f_audio_source.c"
 #include "f_diag.c"
 #include "f_rmnet.c"
 #include "f_mass_storage.c"
@@ -248,7 +248,7 @@ void network_pm_qos_update_latency(int vote)
 		return;
 
 	if (vote) {
-		pm_qos_update_request(&pm_qos_req_tp, (s32)PM_QOS_USB_TP_CPU_FREQ * 1000);
+		pm_qos_update_request(&pm_qos_req_tp, (s32)PM_QOS_USB_TP_CPU_FREQ);
 	} else {
 		pm_qos_update_request(&pm_qos_req_tp, (s32)PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE);
 	}
@@ -345,7 +345,7 @@ static void android_work(struct work_struct *data)
 	if (atomic_read(&connect2pc) != dev->sw_connected) {
 		atomic_set(&connect2pc, dev->sw_connected);
 		switch_set_state(&cdev->sw_connect2pc, atomic_read(&connect2pc) ? 1 : 0);
-		USB_INFO("set usb_connect2pc = %d\n", connect2pc);
+		USB_INFO("set usb_connect2pc = %d\n", atomic_read(&connect2pc) ? 1 : 0);
 		if (!atomic_read(&connect2pc)) {
 			USB_INFO("%s: OS_NOT_YET\n", __func__);
 			os_type = OS_NOT_YET;
@@ -934,7 +934,7 @@ static int mtp_function_init(struct android_usb_function *f, struct usb_composit
 	struct android_dev *dev = _android_dev;
 	int ret;
 	ret = mtp_setup();
-	mtp_setup_perflock(dev->pdata->mtp_perf_lock_on?true:false);
+	mtp_setup_perflock();
 	return ret;
 }
 
@@ -986,26 +986,10 @@ static ssize_t mtp_debug_level_store(
 	return size;
 }
 
-static ssize_t mtp_iobusy_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	/* We will hold perf lock during I/O jobs */
-	return sprintf(buf, "%d\n", _mtp_dev->mtp_perf_lock_on?1:0);
-}
-static ssize_t mtp_open_state_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%d\n", htc_mtp_open_state);
-}
-
 static DEVICE_ATTR(mtp_debug_level, S_IRUGO | S_IWUSR, mtp_debug_level_show,
 						    mtp_debug_level_store);
-static DEVICE_ATTR(iobusy, S_IRUGO, mtp_iobusy_show, NULL);
-static DEVICE_ATTR(mtp_open_state, S_IRUGO, mtp_open_state_show, NULL);
 static struct device_attribute *mtp_function_attributes[] = {
 	&dev_attr_mtp_debug_level,
-	&dev_attr_iobusy,
-	&dev_attr_mtp_open_state,
 	NULL
 };
 
@@ -1597,40 +1581,6 @@ static ssize_t projector_auth_store(
 static DEVICE_ATTR(auth, S_IWUSR, NULL,
 		projector_auth_store);
 
-static ssize_t projector_debug_mode_store(
-		struct device *dev, struct device_attribute *attr,
-		const char *buff, size_t size)
-{
-	struct android_usb_function *f = dev_get_drvdata(dev);
-	struct htcmode_protocol *config = f->config;
-	int value, i;
-	int framesize = DEFAULT_PROJ_HEIGHT * DEFAULT_PROJ_WIDTH;
-
-	if (sscanf(buff, "%d", &value) == 1) {
-
-		if (!test_frame)
-			test_frame = kzalloc(framesize * 2, GFP_KERNEL);
-
-		if (test_frame)
-			for (i = 0 ; i < framesize ; i++)
-				if (i < framesize/4)
-					test_frame[i] = 0xF800;
-				else if (i < framesize*2/4)
-					test_frame[i] = 0x7E0;
-				else if (i < framesize*3/4)
-					test_frame[i] = 0x1F;
-				else
-					test_frame[i] = 0xFFFF;
-
-		config->debug_mode = value;
-		return size;
-	}
-	return -EINVAL;
-}
-
-static DEVICE_ATTR(debug_mode, S_IWUSR, NULL,
-		projector_debug_mode_store);
-
 static struct device_attribute *projector_function_attributes[] = {
 	&dev_attr_width,
 	&dev_attr_height,
@@ -1641,7 +1591,6 @@ static struct device_attribute *projector_function_attributes[] = {
 	&dev_attr_client_sig,
 	&dev_attr_server_sig,
 	&dev_attr_auth,
-	&dev_attr_debug_mode,
 	NULL
 };
 
@@ -1655,9 +1604,72 @@ struct android_usb_function projector_function = {
 };
 #endif
 
+static int audio_source_function_init(struct android_usb_function *f,
+			struct usb_composite_dev *cdev)
+{
+	struct audio_source_config *config;
+
+	config = kzalloc(sizeof(struct audio_source_config), GFP_KERNEL);
+	if (!config)
+		return -ENOMEM;
+	config->card = -1;
+	config->device = -1;
+	f->config = config;
+	return 0;
+}
+
+static void audio_source_function_cleanup(struct android_usb_function *f)
+{
+	kfree(f->config);
+}
+
+static int audio_source_function_bind_config(struct android_usb_function *f,
+						struct usb_configuration *c)
+{
+	struct audio_source_config *config = f->config;
+
+	return audio_source_bind_config(c, config);
+}
+
+static void audio_source_function_unbind_config(struct android_usb_function *f,
+						struct usb_configuration *c)
+{
+	struct audio_source_config *config = f->config;
+
+	config->card = -1;
+	config->device = -1;
+}
+
+static ssize_t audio_source_pcm_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct android_usb_function *f = dev_get_drvdata(dev);
+	struct audio_source_config *config = f->config;
+
+	/* print PCM card and device numbers */
+	return sprintf(buf, "%d %d\n", config->card, config->device);
+}
+
+static DEVICE_ATTR(pcm, S_IRUGO | S_IWUSR, audio_source_pcm_show, NULL);
+
+static struct device_attribute *audio_source_function_attributes[] = {
+	&dev_attr_pcm,
+	NULL
+};
+
+static struct android_usb_function audio_source_function = {
+	.name		= "audio_source",
+	.init		= audio_source_function_init,
+	.cleanup	= audio_source_function_cleanup,
+	.bind_config	= audio_source_function_bind_config,
+	.unbind_config	= audio_source_function_unbind_config,
+	.attributes	= audio_source_function_attributes,
+};
+
 static struct android_usb_function *supported_functions[] = {
 	&rndis_function,
 	&accessory_function,
+	&audio_source_function,
 	&mtp_function,
 	&ptp_function,
 	&adb_function,
@@ -2032,10 +2044,8 @@ field ## _store(struct device *dev, struct device_attribute *attr,	\
 }									\
 static DEVICE_ATTR(field, S_IRUGO | S_IWUSR, field ## _show, field ## _store);
 
-/*
 DESCRIPTOR_ATTR(idVendor, "%04x\n")
 DESCRIPTOR_ATTR(idProduct, "%04x\n")
-*/
 DESCRIPTOR_ATTR(bcdDevice, "%04x\n")
 DESCRIPTOR_ATTR(bDeviceClass, "%d\n")
 DESCRIPTOR_ATTR(bDeviceSubClass, "%d\n")
@@ -2133,8 +2143,8 @@ static ssize_t enable_diag_mdm_rmnet_store(struct device *pdev, struct device_at
 static DEVICE_ATTR(enable_diag_mdm_rmnet, S_IRUGO | S_IWUSR, NULL, enable_diag_mdm_rmnet_store);
 
 static struct device_attribute *android_usb_attributes[] = {
-/*	&dev_attr_idVendor,*/
-/*	&dev_attr_idProduct,*/
+	&dev_attr_idVendor,
+	&dev_attr_idProduct,
 	&dev_attr_bcdDevice,
 	&dev_attr_bDeviceClass,
 	&dev_attr_bDeviceSubClass,

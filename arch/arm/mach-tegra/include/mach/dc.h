@@ -589,6 +589,7 @@ struct tegra_dc_pwm_params {
 	int backlight_mode;
 	u8 *dimming_off_cmd;
 	int n_dimming_off_cmd;
+	bool dimming_enable;
 };
 
 void tegra_dc_config_pwm(struct tegra_dc *dc, struct tegra_dc_pwm_params *cfg);

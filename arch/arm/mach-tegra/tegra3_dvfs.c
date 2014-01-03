@@ -38,14 +38,16 @@ static struct dvfs *cpu_dvfs;
 
 static int cpu_millivolts[MAX_DVFS_FREQS] = CPU_MILLIVOLTS;
 
-static const int cpu_millivolts_aged[MAX_DVFS_FREQS] = CPU_MILLIVOLTS;
+static const int cpu_millivolts_orig[MAX_DVFS_FREQS] = CPU_MILLIVOLTS;
 
 static const unsigned int cpu_cold_offs_mhz[MAX_DVFS_FREQS] = {
 	 50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50};
 
-static const int core_millivolts[MAX_DVFS_FREQS] = {
+#define CORE_MILIVOLTS {\
 	950, 1000, 1050, 1100, 1150, 1200, 1250, 1300, 1350};
 
+static const int core_millivolts[MAX_DVFS_FREQS] = CORE_MILIVOLTS;
+	
 #define KHZ 1000
 #define MHZ 1000000
 
@@ -55,19 +57,32 @@ static const int core_millivolts[MAX_DVFS_FREQS] = {
 static int cpu_below_core = VDD_CPU_BELOW_VDD_CORE;
 
 #define VDD_SAFE_STEP			100
+#define VDD_MAX_CHANGE			200
+
+#define VDD_CPU_MIN				700
+#define VDD_CPU_MAX				1250
+
+#define VDD_CPU_DEFAULT_MVS		-25
+#define VDD_CPU_DEFAULT_MVS_UNIFY		-25
+
+#define VDD_CORE_MIN			950
+#define VDD_CORE_MAX			1350
+
+static int curr_cpu_vdd_change = 0;
+extern struct mutex dvfs_lock;
 
 static struct dvfs_rail tegra3_dvfs_rail_vdd_cpu = {
 	.reg_id = "vdd_cpu",
-	.max_millivolts = 1250,
-	.min_millivolts = 725,
+	.max_millivolts = VDD_CPU_MAX,
+	.min_millivolts = VDD_CPU_MIN,
 	.step = VDD_SAFE_STEP,
 	.jmp_to_zero = true,
 };
 
 static struct dvfs_rail tegra3_dvfs_rail_vdd_core = {
 	.reg_id = "vdd_core",
-	.max_millivolts = 1350,
-	.min_millivolts = 950,
+	.max_millivolts = VDD_CORE_MAX,
+	.min_millivolts = VDD_CORE_MIN,
 	.step = VDD_SAFE_STEP,
 };
 
@@ -78,6 +93,7 @@ static struct dvfs_rail *tegra3_dvfs_rails[] = {
 
 static int tegra3_get_core_floor_mv(int cpu_mv)
 {
+#if 0
 	if (cpu_mv < 800)
 		return  950;
 	if (cpu_mv < 900)
@@ -93,6 +109,18 @@ static int tegra3_get_core_floor_mv(int cpu_mv)
 		return 1200;
 	if (cpu_mv <= 1250)
 		return 1300;
+#endif
+	int i;
+	
+	for (i=0; i<ARRAY_SIZE(core_millivolts) && core_millivolts[i] < cpu_mv; i++);
+	if (i<ARRAY_SIZE(core_millivolts)){
+		return core_millivolts[i];
+	}
+	
+	/* fail-safe */
+	if (cpu_mv <= VDD_CPU_MAX)
+		return 1300;
+
 	BUG();
 }
 
@@ -194,7 +222,12 @@ static struct dvfs cpu_dvfs_table[] = {
 	CPU_DVFS("cpu_g", 14, -1, MHZ,  1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,    1,    1,    1,    1,    1,  900,  900,  900,  900,  900,  900,  900,  900,  900,  900,  900,  900,  900,  900,  900,  900,  900,  900),
 	CPU_DVFS("cpu_g", 15, -1, MHZ,  1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,  900,  900,  900,  900,  900,  900,  900,  900,  900,  900,  900,  900,  900,  900,  900,  900,  900,  900,  900,  900,  900,  900,  900),
 
-	CPU_DVFS("cpu_g", 12, 3, MHZ,   1,   475, 475, 475, 475, 620, 620, 620, 620, 760, 760, 760, 760,  760,  910,  910,  1000,  1000, 1000, 1000, 1150, 1150, 1150, 1150, 1150, 1300, 1300, 1300, 1300, 1400, 1400, 1400, 1400, 1500, 1500, 1500, 1500, 1500, 1500, 1700),
+#ifdef CONFIG_TEGRA_UNIFY_VARIANT
+	CPU_DVFS("cpu_g", 12, 3, MHZ,   475, 475, 475, 475, 475, 620, 620, 620, 760, 760, 760, 760, 910,  910,  910, 1000,  1000,  1000, 1000, 1150, 1150, 1150, 1150, 1300, 1300, 1300, 1300, 1400, 1400, 1400, 1400, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1700),
+#else
+	CPU_DVFS("cpu_g", 12, 3, MHZ,   475, 475, 475, 475, 475, 620, 620, 620, 620, 760, 760, 760, 760,  760,  910,  910,  1000,  1000, 1000, 1000, 1150, 1150, 1150, 1150, 1150, 1300, 1300, 1300, 1300, 1400, 1400, 1400, 1400, 1500, 1500, 1500, 1500, 1500, 1500, 1700),
+#endif
+
 	CPU_DVFS("cpu_g", 12, 4, MHZ,   475, 475, 475, 475, 475, 620, 620, 620, 760, 760, 760, 760, 910,  910,  910, 1000,  1000,  1000, 1000, 1150, 1150, 1150, 1150, 1300, 1300, 1300, 1300, 1400, 1400, 1400, 1400, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1700),
 
 	CPU_DVFS("cpu_g", 13, 3, MHZ,   1,   1,   1,   1, 550, 550, 550, 770, 770, 770, 770,  910,  910,  910,  910,  910,  910,  910, 1150, 1150, 1230, 1230, 1230, 1280, 1280, 1330, 1330, 1370, 1370, 1400, 1400, 1470, 1470, 1500, 1500, 1500, 1500, 1540, 1540, 1700),
@@ -224,10 +257,10 @@ static struct dvfs cpu_0_dvfs_table[] = {
 	CPU_DVFS("cpu_0", 12, 4, MHZ, 475, 620, 620, 620, 760, 760, 760, 910, 910, 1000, 1000, 1000, 1000, 1000, 1000, 1150, 1150, 1150, 1150, 1300, 1300, 1300, 1300, 1400, 1400, 1400, 1500, 1500, 1500, 1500, 1500, 1600, 1600, 1600, 1600, 1600, 1600, 1600, 1700),
 };
 
-#define CORE_DVFS(_clk_name, _speedo_id, _auto, _mult, _freqs...)	\
+#define CORE_DVFS(_clk_name, _soc_id, _auto, _mult, _freqs...)	\
 	{							\
 		.clk_name	= _clk_name,			\
-		.speedo_id	= _speedo_id,			\
+		.speedo_id	= _soc_id,			\
 		.process_id	= -1,				\
 		.freqs		= {_freqs},			\
 		.freqs_mult	= _mult,			\
@@ -259,6 +292,31 @@ static struct dvfs core_dvfs_table[] = {
 	CORE_DVFS("vi",     2, 1, KHZ,        1, 219000, 267000, 300000, 371000,  409000,  425000,  425000,  425000),
 	CORE_DVFS("vi",     3, 1, KHZ,        1,      1,      1,      1,      1,       1,  470000,  470000,  470000),
 
+#ifdef CONFIG_TEGRA_GPU_OC
+	CORE_DVFS("vde",    0, 1, KHZ,        1, 267000, 304000, 400000, 484000,  520000,  520000,  520000,  520000),
+	CORE_DVFS("mpe",    0, 1, KHZ,        1, 267000, 304000, 400000, 484000,  520000,  520000,  520000,  520000),
+	CORE_DVFS("2d",     0, 1, KHZ,        1, 267000, 304000, 400000, 484000,  520000,  520000,  520000,  520000),
+	CORE_DVFS("epp",    0, 1, KHZ,        1, 267000, 304000, 400000, 484000,  520000,  520000,  520000,  520000),
+	CORE_DVFS("3d",     0, 1, KHZ,        1, 267000, 304000, 400000, 484000,  520000,  520000,  520000,  520000),
+	CORE_DVFS("3d2",    0, 1, KHZ,        1, 267000, 304000, 400000, 484000,  520000,  520000,  520000,  520000),
+	CORE_DVFS("se",     0, 1, KHZ,        1, 267000, 304000, 400000, 484000,  520000,  520000,  520000,  520000),
+
+	CORE_DVFS("vde",    1, 1, KHZ,   200000, 267000, 304000, 400000, 484000,  520000,  520000,  520000,  520000),
+	CORE_DVFS("mpe",    1, 1, KHZ,   200000, 267000, 304000, 400000, 484000,  520000,  520000,  520000,  520000),
+	CORE_DVFS("2d",     1, 1, KHZ,   200000, 267000, 304000, 400000, 484000,  520000,  520000,  520000,  520000),
+	CORE_DVFS("epp",    1, 1, KHZ,   200000, 267000, 304000, 400000, 484000,  520000,  520000,  520000,  520000),
+	CORE_DVFS("3d",     1, 1, KHZ,   200000, 267000, 304000, 400000, 484000,  520000,  520000,  520000,  520000),
+	CORE_DVFS("3d2",    1, 1, KHZ,   200000, 267000, 304000, 400000, 484000,  520000,  520000,  520000,  520000),
+	CORE_DVFS("se",     1, 1, KHZ,   200000, 267000, 304000, 400000, 484000,  520000,  520000,  520000,  520000),
+
+	CORE_DVFS("vde",    2, 1, KHZ,   200000, 267000, 304000, 400000, 484000,  520000,  520000,  520000,  600000),
+	CORE_DVFS("mpe",    2, 1, KHZ,   200000, 267000, 304000, 400000, 484000,  520000,  520000,  520000,  600000),
+	CORE_DVFS("2d",     2, 1, KHZ,   200000, 267000, 304000, 400000, 484000,  520000,  520000,  520000,  600000),
+	CORE_DVFS("epp",    2, 1, KHZ,   200000, 267000, 304000, 400000, 484000,  520000,  520000,  520000,  600000),
+	CORE_DVFS("3d",     2, 1, KHZ,   200000, 267000, 304000, 400000, 484000,  520000,  520000,  520000,  600000),
+	CORE_DVFS("3d2",    2, 1, KHZ,   200000, 267000, 304000, 400000, 484000,  520000,  520000,  520000,  600000),
+	CORE_DVFS("se",     2, 1, KHZ,   200000, 267000, 304000, 400000, 484000,  520000,  520000,  520000,  600000),
+#else
 	CORE_DVFS("vde",    0, 1, KHZ,        1, 228000, 275000, 332000, 380000,  416000,  416000,  416000,  416000),
 	CORE_DVFS("mpe",    0, 1, KHZ,        1, 234000, 285000, 332000, 380000,  416000,  416000,  416000,  416000),
 	CORE_DVFS("2d",     0, 1, KHZ,        1, 267000, 285000, 332000, 380000,  416000,  416000,  416000,  416000),
@@ -282,6 +340,7 @@ static struct dvfs core_dvfs_table[] = {
 	CORE_DVFS("3d",     2, 1, KHZ,   200000, 247000, 304000, 361000, 408000,  446000,  484000,  520000,  600000),
 	CORE_DVFS("3d2",    2, 1, KHZ,   200000, 247000, 304000, 361000, 408000,  446000,  484000,  520000,  600000),
 	CORE_DVFS("se",     2, 1, KHZ,   200000, 267000, 304000, 361000, 408000,  446000,  484000,  520000,  600000),
+#endif
 
 	CORE_DVFS("vde",    3, 1, KHZ,        1,      1,      1,      1,      1,       1,  484000,  484000,  484000),
 	CORE_DVFS("mpe",    3, 1, KHZ,        1,      1,      1,      1,      1,       1,  484000,  484000,  484000),
@@ -296,16 +355,22 @@ static struct dvfs core_dvfs_table[] = {
 	CORE_DVFS("host1x", 2, 1, KHZ,   100000, 152000, 188000, 222000, 254000,  267000,  267000,  267000,  300000),
 	CORE_DVFS("host1x", 3, 1, KHZ,        1,      1,      1,      1,      1,       1,  242000,  242000,  242000),
 
+#ifdef CONFIG_TEGRA_GPU_OC
+	CORE_DVFS("cbus",   0, 1, KHZ,        1, 228000, 275000, 332000, 380000,  416000,  416000,  416000,  416000),
+	CORE_DVFS("cbus",   1, 1, KHZ,   200000, 267000, 304000, 400000, 484000,  520000,  520000,  520000,  520000),
+	CORE_DVFS("cbus",   2, 1, KHZ,   200000, 267000, 304000, 400000, 484000,  520000,  520000,  520000,  600000),
+#else
 	CORE_DVFS("cbus",   0, 1, KHZ,        1, 228000, 275000, 332000, 380000,  416000,  416000,  416000,  416000),
 	CORE_DVFS("cbus",   1, 1, KHZ,   200000, 228000, 275000, 332000, 380000,  416000,  416000,  416000,  416000),
 	CORE_DVFS("cbus",   2, 1, KHZ,   200000, 247000, 304000, 352000, 400000,  437000,  484000,  520000,  600000),
+#endif
 	CORE_DVFS("cbus",   3, 1, KHZ,        1,      1,      1,      1,      1,       1,  484000,  484000,  484000),
 
 	CORE_DVFS("pll_c",  -1, 1, KHZ,  533000, 667000, 667000, 800000, 800000, 1066000, 1066000, 1066000, 1200000),
 
 	/*
 	 * PLLM dvfs is common across all speedo IDs with one special exception
-	 * for T30 and T33, rev A02+, provided PLLM usage is restricted. Both
+	 * for T30, T33, T37 rev A02+, provided PLLM usage is restricted. Both
 	 * common and restricted table are included, and table selection is
 	 * handled by is_pllm_dvfs() below.
 	 */
@@ -495,7 +560,7 @@ static void __init init_dvfs_cold(struct dvfs *d, int nominal_mv_index)
 			cpu_cold_freqs[i] = d->freqs[i] - offs;
 		else {
 			cpu_cold_freqs[i] = d->freqs[i];
-			pr_warn("tegra3_dvfs: cold offset %lu is too high for"
+			pr_debug("tegra3_dvfs: cold offset %lu is too high for"
 				" regular dvfs limit %lu\n", offs, d->freqs[i]);
 		}
 
@@ -644,35 +709,171 @@ static void tegra_adjust_cpu_mvs(int mvs)
 {
 	int i;
 
-	BUG_ON(ARRAY_SIZE(cpu_millivolts) != ARRAY_SIZE(cpu_millivolts_aged));
+	mutex_lock(&dvfs_lock);
 
-	for (i = 0; i < ARRAY_SIZE(cpu_millivolts); i++)
-		cpu_millivolts[i] = cpu_millivolts_aged[i] - mvs;
+	pr_info("tegra_adjust_cpu_mvs: mvs %d\n", mvs);
+	BUG_ON(ARRAY_SIZE(cpu_millivolts) != ARRAY_SIZE(cpu_millivolts_orig));
+	
+	curr_cpu_vdd_change = mvs;
+	for (i = 0; i < ARRAY_SIZE(cpu_millivolts); i++){
+		int old_val = cpu_millivolts_orig[i];
+		int new_val = old_val + mvs;
+		
+		if (new_val < VDD_CPU_MIN)
+			new_val = VDD_CPU_MIN;
+		 
+		if(new_val > VDD_CPU_MAX)
+			new_val = VDD_CPU_MAX;
+						
+		cpu_millivolts[i] = new_val;
+	}
+	
+	mutex_unlock(&dvfs_lock);
 }
 
-/**
- * Adjust VDD_CPU to offset aging.
- * 25mV for 1st year
- * 12mV for 2nd and 3rd year
- * 0mV for 4th year onwards
- */
-void tegra_dvfs_age_cpu(int cur_linear_age)
+static void tegra_reset_cpu_mvs(void)
 {
-	int chip_linear_age;
-	int chip_life;
-	chip_linear_age = tegra_get_age();
-	chip_life = cur_linear_age - chip_linear_age;
+	int i;
 
-	/*For T37 and AP37*/
-	if (tegra_cpu_speedo_id() == 12 || tegra_cpu_speedo_id() == 13) {
-		if (chip_linear_age <= 0) {
-			return;
-		} else if (chip_life <= 12) {
-			tegra_adjust_cpu_mvs(25);
-		} else if (chip_life <= 36) {
-			tegra_adjust_cpu_mvs(13);
+	mutex_lock(&dvfs_lock);
+
+	pr_info("tegra_reset_cpu_mvs\n");
+	BUG_ON(ARRAY_SIZE(cpu_millivolts) != ARRAY_SIZE(cpu_millivolts_orig));
+	
+	curr_cpu_vdd_change = 0;
+	for (i = 0; i < ARRAY_SIZE(cpu_millivolts); i++){
+		cpu_millivolts[i] = cpu_millivolts_orig[i];
+	}
+	
+	mutex_unlock(&dvfs_lock);
+}
+
+#ifdef CONFIG_TEGRA_UNIFY_VARIANT
+static bool tegra_is_variant_4(void)
+{
+	return tegra_cpu_process_id()==4;
+}
+#endif
+
+void tegra_cpu_mvs_init()
+{
+	int default_uv = VDD_CPU_DEFAULT_MVS;
+
+#ifdef CONFIG_TEGRA_UNIFY_VARIANT
+	/* dont use full default if we are treating
+	 a variant 3 as 4 */
+	if (!tegra_is_variant_4())
+		default_uv = VDD_CPU_DEFAULT_MVS_UNIFY;
+#endif
+		
+	tegra_adjust_cpu_mvs(default_uv);
+}
+
+struct mv_struct {
+	unsigned long mhz;
+	int mv_table[MAX_DVFS_FREQS];
+	int min_pos;
+	int max_pos;
+};
+
+// TODO why *2?
+static struct mv_struct mv_list[MAX_DVFS_FREQS*2];
+
+/* combine entries for the same frequency */
+static unsigned int get_mv_table_for_name(const char* cpu_name, const int pos) 
+{
+	int i = 0, sum = 0, j = pos, k = 0;
+	struct clk *cpu_clk_g = tegra_get_clock_by_name(cpu_name);
+
+	/* find how many actual entries there are */
+	sum = cpu_clk_g->dvfs->num_freqs;
+	if (sum == 0) 
+		return 0;
+	j = j - 1;
+	for (i = 0; i < sum; i++) {
+		if (i == 0 || (cpu_clk_g->dvfs->freqs[i] != cpu_clk_g->dvfs->freqs[i - 1])) {
+			j++;
+			k = 0;
+			mv_list[j].mv_table[k] = cpu_clk_g->dvfs->millivolts[i];
+			mv_list[j].mhz = cpu_clk_g->dvfs->freqs[i]/1000000;
+			mv_list[j].min_pos = i;
+			mv_list[j].max_pos = i;
+		} else {
+			mv_list[j].mv_table[++k] = cpu_clk_g->dvfs->millivolts[i];
+			mv_list[j].max_pos = i;
 		}
 	}
+	return j + 1;
+}
+
+static unsigned int cpu_mv_init(void) 
+{
+	return get_mv_table_for_name("cpu_g", 0);
+}
+
+ssize_t show_cpu_mv_table(char *buf)
+{
+	int num, i = 0;
+	char *out = buf;
+	/* find how many actual entries there are */
+	num = cpu_mv_init();
+
+	for (i = 0; i < num; i++) {
+		out += sprintf(out, "%lumhz: %i mV\n", mv_list[i].mhz, mv_list[i].mv_table[0]);
+	}
+	return out - buf;
+}
+
+ssize_t store_cpu_mv_table(const char *buf, size_t count)
+{
+	int i = 0, j = 0;
+	int ret;
+	long temp;
+	int uv;
+	char size_cur[16];
+	const int num = cpu_mv_init();
+	int user_cpu_millivolts[MAX_DVFS_FREQS] = CPU_MILLIVOLTS;
+
+	if (num == 0)
+		return -EINVAL;
+
+	pr_info("store_cpu_mv_table %s\n", buf);
+							
+	curr_cpu_vdd_change = 0;
+	
+	for (i = 0; i < num; i++) {
+		if (mv_list[i].mhz != 0) {
+			ret = sscanf(buf, "%ld", &(temp));
+			if (ret == 1) {
+				if (temp < VDD_CPU_MIN)
+					temp = VDD_CPU_MIN;
+
+				if (temp > VDD_CPU_MAX)
+					temp = VDD_CPU_MAX;
+
+				uv = mv_list[i].mv_table[0]-temp; //This is the UV value
+			}
+			else
+				return -EINVAL;
+			
+			for (j = mv_list[i].min_pos; j <= mv_list[i].max_pos; ++j) {
+				temp = mv_list[i].mv_table[j - mv_list[i].min_pos] - uv;
+				user_cpu_millivolts[j] = temp;
+			}
+
+			/* Non-standard sysfs interface: advance buf */
+			ret = sscanf(buf, "%s", size_cur);
+			buf += (strlen(size_cur)+1);			
+		}
+	}
+
+	mutex_lock(&dvfs_lock);
+	for (i = 0; i < ARRAY_SIZE(cpu_millivolts); i++){
+		cpu_millivolts[i] = user_cpu_millivolts[i];
+	}
+	mutex_unlock(&dvfs_lock);
+
+	return count;
 }
 
 void __init tegra_soc_init_dvfs(void)
@@ -826,6 +1027,7 @@ static struct core_cap user_core_cap;
 static struct core_cap user_cbus_cap;
 
 static struct kobject *cap_kobj;
+static struct kobject *dvfs_kobj;
 
 /* Arranged in order required for enabling/lowering the cap */
 static struct {
@@ -1031,6 +1233,71 @@ const struct attribute *cap_attributes[] = {
 	NULL,
 };
 
+#ifdef CONFIG_VOLTAGE_CONTROL
+static ssize_t cpu_millivolts_show(struct kobject *kobj, struct kobj_attribute *attr,
+		    char *buf)
+{
+	char *out = buf;
+	
+	out += sprintf(out, "current mv change %d\n", curr_cpu_vdd_change);
+	out += show_cpu_mv_table(out);
+
+	return out - buf;
+}
+
+static ssize_t cpu_millivolts_store(struct kobject *kobj, struct kobj_attribute *attr,
+		     const char *buf, size_t count)
+{
+	int mv_change = 0;
+	int ret = 0;
+	
+	ret = sscanf(buf, "%d", &mv_change);
+	if (ret != 1)
+		return -EINVAL;
+	
+	if(mv_change == 0){
+		tegra_reset_cpu_mvs();
+		return count;
+	}
+	
+	if(mv_change > VDD_MAX_CHANGE || mv_change < -VDD_MAX_CHANGE)
+		return -EINVAL;
+				
+	pr_info("cpu_millivolts_store: mv_change %d\n", mv_change);
+	tegra_adjust_cpu_mvs(mv_change);
+
+	return count;
+}
+
+static struct kobj_attribute cpu_millivolts_attribute =
+	__ATTR(cpu_millivolts, 0644, cpu_millivolts_show, cpu_millivolts_store);
+
+static ssize_t
+cpu_millivolts_new_show(struct kobject *kobj, struct kobj_attribute *attr,
+		    char *buf)
+{
+	char *out = buf;
+	out += show_cpu_mv_table(out);
+	return out - buf;
+}
+
+static ssize_t
+cpu_millivolts_new_store(struct kobject *kobj, struct kobj_attribute *attr,
+		     const char *buf, size_t count)
+{
+	return store_cpu_mv_table(buf, count);
+}
+
+static struct kobj_attribute cpu_millivolts_new_attribute =
+	__ATTR(cpu_millivolts_new, 0644, cpu_millivolts_new_show, cpu_millivolts_new_store);
+
+const struct attribute *dvfs_attributes[] = {
+	&cpu_millivolts_attribute.attr,
+	&cpu_millivolts_new_attribute.attr,
+	NULL,
+};
+#endif
+
 void tegra_dvfs_core_cap_enable(bool enable)
 {
 	mutex_lock(&core_cap_lock);
@@ -1128,6 +1395,18 @@ static int __init tegra_dvfs_init_core_cap(void)
 		return 0;
 	}
 	pr_info("tegra dvfs: tegra sysfs cap interface is initialized\n");
+
+	dvfs_kobj = kobject_create_and_add("tegra3_dvfs", kernel_kobj);
+	if (!dvfs_kobj) {
+		pr_err("tegra3_dvfs: failed to create sysfs dvfs object");
+		return 0;
+	}
+
+	if (sysfs_create_files(dvfs_kobj, dvfs_attributes)) {
+		pr_err("tegra3_dvfs: failed to create sysfs dvfs interface");
+		return 0;
+	}
+	pr_info("tegra dvfs: tegra sysfs dvfs interface is initialized\n");
 
 	return 0;
 }
