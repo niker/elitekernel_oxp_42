@@ -1692,7 +1692,7 @@ static struct android_usb_platform_data android_usb_pdata = {
 	.fserial_init_string = "tty,tty:autobot,tty:serial,tty:autobot",
 	.usb_id_pin_gpio = TEGRA_GPIO_PU5,
 	.RndisDisableMPDecision = true,
-	.nluns = 1,
+	.nluns = 2,
 	.support_modem = false,
 };
 
