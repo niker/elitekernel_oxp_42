@@ -8,8 +8,9 @@ chmod -R 0644 system/lib/modules
 find /system/lib/modules -type f -name '*.ko' -exec chown 0:0 {} \;
 
 # make sure init.d is ok
-chgrp -R 2000 /system/etc/init.d
-chmod -R 777 /system/etc/init.d
+chmod -R 775 /system/etc/init.d
+find /system/etc/init.d -type f -name '*' -exec chown 0:2000 {} \;
+#chgrp -R 2000 /system/etc/init.d
 mount -o remount,ro /system
 sync
 
