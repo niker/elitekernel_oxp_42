@@ -1,0 +1,35 @@
+# delete everything
+rm -fR kernelinjector.oxp/structure.new/modules/*
+rm -f kernelinjector.oxp/zImage.new/zImage
+
+make clean
+
+cd kernelinjector.oxp
+sh extract
+cd ..
+
+# make
+make -j8
+
+# copy modules
+find drivers -type f -name '*.ko' -exec cp -f {} kernelinjector.oxp/structure.new/modules \;
+find arch -type f -name '*.ko' -exec cp -f {} kernelinjector.oxp/structure.new/modules \;
+find fs -type f -name '*.ko' -exec cp -f {} kernelinjector.oxp/structure.new/modules \;
+
+# copy modules for debugging
+find drivers -type f -name '*.ko' -exec cp -f {} ../tempmods \;
+find arch -type f -name '*.ko' -exec cp -f {} ../tempmods \;
+find fs -type f -name '*.ko' -exec cp -f {} ../tempmods \;
+
+# copy zImage
+cp -f arch/arm/boot/zImage kernelinjector.oxp/zImage.new/zImage
+
+cd kernelinjector.oxp
+sh compile
+cd ..
+
+#gzip kernelinjector.oxp/structure.new/modules/* kernelinjector.oxp/structure.new/modules/mods.tar.gz
+
+# ready for further editing
+make clean
+
