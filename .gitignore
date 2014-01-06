@@ -57,6 +57,10 @@ modules.builtin
 !.mailmap
 !.config
 
+#KernelInjector
+kernelinjector.oxp/zImage.new/zImage
+
+
 #
 # Generated include files
 #
