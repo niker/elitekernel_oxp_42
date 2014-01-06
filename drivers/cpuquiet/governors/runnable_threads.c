@@ -79,7 +79,7 @@ static void update_runnables_state(void)
 	}
 	nr_run_last = nr_run;
 
-	if (nr_run > 1 && (nr_cpus > max_cpus || nr_run < nr_cpus) && nr_cpus > min_cpus) {
+	if ((nr_cpus > max_cpus || nr_run < nr_cpus) && nr_cpus >= min_cpus) {
 		runnables_state = DOWN;
 	} else if (nr_cpus < min_cpus || nr_run > nr_cpus) {
 		runnables_state =  UP;
@@ -252,8 +252,7 @@ static int runnables_start(void)
 	if (err)
 		return err;
 
-	runnables_wq = alloc_workqueue("cpuquiet-runnables",
-			WQ_UNBOUND | WQ_RESCUER | WQ_FREEZABLE, 1);
+	runnables_wq = alloc_workqueue("cpuquiet-runnables", WQ_HIGHPRI, 0);
 	if (!runnables_wq)
 		return -ENOMEM;
 
