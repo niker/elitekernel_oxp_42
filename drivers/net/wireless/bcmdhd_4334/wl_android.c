@@ -433,7 +433,7 @@ struct perf_lock wlan_perf_lock;
 struct pm_qos_request_list req_freq;
 struct pm_qos_request_list req_cpus;
 #define PM_QOS_CPU_WIFI_FREQ_MAX_DEFAULT_VALUE 1600000
-#define PM_QOS_MAX_ONLINE_CPUS_WIFI_TWO_VALUE 2
+#define PM_QOS_MAX_ONLINE_CPUS_WIFI_TWO_VALUE 3
 #define PM_QOS_MAX_ONLINE_CPUS_WIFI_FOUR_VALUE 4
 static int wlan_req_perflock_active = 0;
 
