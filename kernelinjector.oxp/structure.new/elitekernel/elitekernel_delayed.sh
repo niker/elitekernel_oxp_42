@@ -4,8 +4,8 @@ sleep 60
 # do the configuration again to override ROM and tegra hardcoded stuff
 
 # run EliteKernel tweaks (overrides ROM tweaks)
-echo "row" > /sys/block/mmcblk0/queue/scheduler
-echo "row" > /sys/block/mmcblk1/queue/scheduler
+echo "sio" > /sys/block/mmcblk0/queue/scheduler
+echo "sio" > /sys/block/mmcblk1/queue/scheduler
 
 # need to enable all CPU cores in order to set them up
 echo 4 > /sys/power/pnpmgr/hotplug/min_on_cpus
