@@ -71,8 +71,8 @@
 
 static int htc_mtp_performance_debug;
 static int mtp_qos;
-static struct pm_qos_request_list mtp_req_freq;
-static struct pm_qos_request_list req_cpus;
+//static struct pm_qos_request_list mtp_req_freq;
+//static struct pm_qos_request_list req_cpus;
 
 static struct work_struct mtp_perf_lock_on_work;
 
@@ -301,13 +301,13 @@ static void mtp_setup_perflock()
 	del_timer(&dev->perf_timer);
 	if (dev->mtp_perf_lock_on) {
 		printk(KERN_INFO "[USB][MTP] %s, perf on\n", __func__);
-		pm_qos_update_request(&mtp_req_freq, (s32)MTP_CPU_FREQ_MIN);
-		pm_qos_update_request(&req_cpus, (s32)MTP_ONLINE_CPUS_MIN);
+		//pm_qos_update_request(&mtp_req_freq, (s32)MTP_CPU_FREQ_MIN);
+		//pm_qos_update_request(&req_cpus, (s32)MTP_ONLINE_CPUS_MIN);
 
 	} else {
 		printk(KERN_INFO "[USB][MTP] %s, perf off\n", __func__);
-		pm_qos_update_request(&mtp_req_freq, (s32)PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE);
-		pm_qos_update_request(&req_cpus, (s32)PM_QOS_MIN_ONLINE_CPUS_DEFAULT_VALUE);
+		//pm_qos_update_request(&mtp_req_freq, (s32)PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE);
+		//pm_qos_update_request(&req_cpus, (s32)PM_QOS_MIN_ONLINE_CPUS_DEFAULT_VALUE);
 	}
 }
 /* 50 ms per file */
@@ -1368,8 +1368,8 @@ static int mtp_setup(void)
 	htc_mtp_performance_debug = 0;
 
 	INIT_WORK(&mtp_perf_lock_on_work, mtp_setup_perflock);
-	pm_qos_add_request(&mtp_req_freq, PM_QOS_CPU_FREQ_MIN, (s32)PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE);
-	pm_qos_add_request(&req_cpus, PM_QOS_MIN_ONLINE_CPUS, (s32)PM_QOS_MIN_ONLINE_CPUS_DEFAULT_VALUE);
+	//pm_qos_add_request(&mtp_req_freq, PM_QOS_CPU_FREQ_MIN, (s32)PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE);
+	//pm_qos_add_request(&req_cpus, PM_QOS_MIN_ONLINE_CPUS, (s32)PM_QOS_MIN_ONLINE_CPUS_DEFAULT_VALUE);
 	setup_timer(&dev->perf_timer, mtp_perf_lock_disable, (unsigned long)dev);
 
 	ret = misc_register(&mtp_device);
