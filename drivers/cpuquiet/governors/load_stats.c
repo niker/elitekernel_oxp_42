@@ -43,19 +43,19 @@ static struct delayed_work load_stats_work;
 static struct kobject *load_stats_kobject;
 
 /* configurable parameters */
-static unsigned int sample_rate = 70;		/* msec */
-static unsigned int start_delay = 3000;
+static unsigned int sample_rate = 60;		/* msec */
+static unsigned int start_delay = 20000;
 static LOAD_STATS_STATE load_stats_state;
 static struct workqueue_struct *load_stats_wq;
 
-static unsigned int load_threshold[8] = {80, 20, 80, 30, 80, 30, 0, 50};
-static unsigned int twts_threshold[8] = {70, 0, 140, 280, 210, 210, 0, 140};
+static unsigned int load_threshold[8] = {85, 20, 85, 40, 85, 40, 0, 50};
+static unsigned int twts_threshold[8] = {60, 0, 120, 240, 180, 180, 0, 120};
 
 extern unsigned int get_rq_info(void);
 
 static u64 input_boost_end_time = 0;
 static bool input_boost_running = false;
-static unsigned int input_boost_duration = 3 * 70; /* ms */
+static unsigned int input_boost_duration = 3 * 60; /* ms */
 static unsigned int input_boost_cpus = 2;
 static unsigned int input_boost_enabled = true;
 static bool input_boost_task_alive = false;

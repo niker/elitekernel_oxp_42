@@ -428,8 +428,8 @@ static unsigned long last_traffic_count = 0;
 
 struct pm_qos_request_list req_freq;
 struct pm_qos_request_list req_cpus;
-#define WIFI_CPU_FREQ_MIN 102000
-#define WIFI_ONLINE_CPUS_MIN 1
+#define WIFI_CPU_FREQ_MIN 475000
+#define WIFI_ONLINE_CPUS_MIN 2
 static int wlan_req_perflock_active = 0;
 
 void wlan_lock_perf(void)
