@@ -44,7 +44,7 @@ static struct kobject *load_stats_kobject;
 
 /* configurable parameters */
 static unsigned int sample_rate = 70;		/* msec */
-static unsigned int start_delay = 20000;
+static unsigned int start_delay = 3000;
 static LOAD_STATS_STATE load_stats_state;
 static struct workqueue_struct *load_stats_wq;
 
