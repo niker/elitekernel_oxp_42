@@ -11,6 +11,12 @@ echo "row" > /sys/block/mmcblk1/queue/scheduler
 echo 4 > /sys/power/pnpmgr/hotplug/min_on_cpus
 sleep 3
 
+# voltages to defaults
+echo "750 825 862 912 937 987 1025 1075 1125 1212" > /sys/devices/system/cpu/cpu0/cpufreq/UV_mV_table
+echo "750 825 862 912 937 987 1025 1075 1125 1212" > /sys/devices/system/cpu/cpu1/cpufreq/UV_mV_table
+echo "750 825 862 912 937 987 1025 1075 1125 1212" > /sys/devices/system/cpu/cpu2/cpufreq/UV_mV_table
+echo "750 825 862 912 937 987 1025 1075 1125 1212" > /sys/devices/system/cpu/cpu3/cpufreq/UV_mV_table
+
 # set governors
 echo "smartmax" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
 echo "smartmax" > /sys/devices/system/cpu/cpu1/cpufreq/scaling_governor
@@ -53,18 +59,18 @@ echo "760000" > /sys/devices/system/cpu/cpufreq/ondemand/ux_freq
 echo "20" > /sys/devices/system/cpu/cpufreq/ondemand/ux_loading
 
 # set vm tweaks
-sysctl -w vm.min_free_kbytes=5242
+sysctl -w vm.min_free_kbytes=4096
 sysctl -w vm.vfs_cache_pressure=30
-sysctl -w vm.swappiness=40
+sysctl -w vm.swappiness=30
 sysctl -w vm.page-cluster=0
 sysctl -w vm.dirty_expire_centisecs=2400
 sysctl -w vm.dirty_writeback_centisecs=600
-sysctl -w vm.dirty_ratio=20
-sysctl -w vm.dirty_background_ratio=30
+sysctl -w vm.dirty_ratio=10
+sysctl -w vm.dirty_background_ratio=15
 sysctl -w vm.oom_kill_allocating_task=0
 sysctl -w vm.panic_on_oom=0
-sysctl -w vm.overcommit_memory=0
-sysctl -w vm.overcommit_ratio=20
+sysctl -w vm.overcommit_memory=1
+sysctl -w vm.overcommit_ratio=100
 sysctl -w kernel.panic_on_oops=1
 sysctl -w kernel.panic=10
 
