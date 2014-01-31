@@ -43,19 +43,19 @@ static struct delayed_work load_stats_work;
 static struct kobject *load_stats_kobject;
 
 /* configurable parameters */
-static unsigned int sample_rate = 60;		/* msec */
+static unsigned int sample_rate = 80;		/* msec */
 static unsigned int start_delay = 20000;
 static LOAD_STATS_STATE load_stats_state;
 static struct workqueue_struct *load_stats_wq;
 
 static unsigned int load_threshold[8] = {85, 20, 85, 40, 85, 40, 0, 50};
-static unsigned int twts_threshold[8] = {60, 0, 120, 240, 180, 180, 0, 120};
+static unsigned int twts_threshold[8] = {80, 0, 160, 320, 210, 210, 0, 160};
 
 extern unsigned int get_rq_info(void);
 
 static u64 input_boost_end_time = 0;
 static bool input_boost_running = false;
-static unsigned int input_boost_duration = 3 * 60; /* ms */
+static unsigned int input_boost_duration = 3 * 80; /* ms */
 static unsigned int input_boost_cpus = 2;
 static unsigned int input_boost_enabled = true;
 static bool input_boost_task_alive = false;
@@ -79,8 +79,8 @@ struct cpu_load_data {
 };
 
 /* Consider IO as busy */
-static bool io_is_busy = false;
-static bool ignore_nice = true;
+static bool io_is_busy = true;
+static bool ignore_nice = false;
 
 static DEFINE_PER_CPU(struct cpu_load_data, cpuload);
 

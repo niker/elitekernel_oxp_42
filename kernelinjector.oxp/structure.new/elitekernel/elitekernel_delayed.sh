@@ -4,8 +4,8 @@ sleep 35
 # do the configuration again to override ROM and tegra hardcoded stuff
 
 # run EliteKernel tweaks (overrides ROM tweaks)
-echo "row" > /sys/block/mmcblk0/queue/scheduler
-echo "row" > /sys/block/mmcblk1/queue/scheduler
+echo "sio" > /sys/block/mmcblk0/queue/scheduler
+echo "sio" > /sys/block/mmcblk1/queue/scheduler
 
 # set governors
 echo "smartmax" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor

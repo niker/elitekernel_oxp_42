@@ -44,8 +44,8 @@
 extern unsigned int best_core_to_turn_up(void);
 
 #define INITIAL_STATE		TEGRA_CPQ_IDLE
-#define LP_UP_DELAY_MS_DEF			60
-#define LP_DOWN_DELAY_MS_DEF		900
+#define LP_UP_DELAY_MS_DEF			80
+#define LP_DOWN_DELAY_MS_DEF		800
 
 static struct mutex *tegra3_cpu_lock;
 static struct workqueue_struct *cpuquiet_wq;
