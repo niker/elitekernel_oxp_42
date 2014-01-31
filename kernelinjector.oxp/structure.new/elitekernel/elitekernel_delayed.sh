@@ -1,42 +1,18 @@
 #!/system/bin/sh
 
-sleep 60 
+sleep 35 
 # do the configuration again to override ROM and tegra hardcoded stuff
 
 # run EliteKernel tweaks (overrides ROM tweaks)
 echo "row" > /sys/block/mmcblk0/queue/scheduler
 echo "row" > /sys/block/mmcblk1/queue/scheduler
 
-# need to enable all CPU cores in order to set them up
-echo 4 > /sys/power/pnpmgr/hotplug/min_on_cpus
-sleep 3
-
-# voltages to defaults
-echo "750 825 862 912 937 987 1025 1075 1125 1212" > /sys/devices/system/cpu/cpu0/cpufreq/UV_mV_table
-echo "750 825 862 912 937 987 1025 1075 1125 1212" > /sys/devices/system/cpu/cpu1/cpufreq/UV_mV_table
-echo "750 825 862 912 937 987 1025 1075 1125 1212" > /sys/devices/system/cpu/cpu2/cpufreq/UV_mV_table
-echo "750 825 862 912 937 987 1025 1075 1125 1212" > /sys/devices/system/cpu/cpu3/cpufreq/UV_mV_table
-
 # set governors
 echo "smartmax" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
-echo "smartmax" > /sys/devices/system/cpu/cpu1/cpufreq/scaling_governor
-echo "smartmax" > /sys/devices/system/cpu/cpu2/cpufreq/scaling_governor
-echo "smartmax" > /sys/devices/system/cpu/cpu3/cpufreq/scaling_governor
 
 # set default speeds (cpus activate in order 0-3-2-1)
 echo "1500000" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq
-echo "1500000" > /sys/devices/system/cpu/cpu1/cpufreq/scaling_max_freq
-echo "1500000" > /sys/devices/system/cpu/cpu2/cpufreq/scaling_max_freq
-echo "1500000" > /sys/devices/system/cpu/cpu3/cpufreq/scaling_max_freq
-
 echo "51000" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
-echo "51000" > /sys/devices/system/cpu/cpu1/cpufreq/scaling_min_freq
-echo "51000" > /sys/devices/system/cpu/cpu2/cpufreq/scaling_min_freq
-echo "51000" > /sys/devices/system/cpu/cpu3/cpufreq/scaling_min_freq
-
-# reset core activation to default
-sleep 1 
-echo 0 > /sys/power/pnpmgr/hotplug/min_on_cpus
 
 # set ondemand prefs
 echo "80" > /sys/devices/system/cpu/cpufreq/ondemand/up_threshold
