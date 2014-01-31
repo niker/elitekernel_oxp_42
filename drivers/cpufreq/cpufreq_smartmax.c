@@ -117,7 +117,7 @@ static bool touch_poke = true;
  * allowing decrease in a single step if multiple
  * cpus are online
  */
-static bool sync_cpu_downscale = true;
+static bool sync_cpu_downscale = false;
 
 /*
  * should ramp_up steps during boost be possible

@@ -693,10 +693,3 @@ service priorityd /system/bin/sh /system/etc/priorityd.sh
     disabled
     oneshot
 
-# Start tweaks core script for Android Revolution HD
-service arhd-tweaks /system/bin/sh /system/etc/init.post_boot.sh
-    class main
-    user root
-    group root
-    oneshot
-

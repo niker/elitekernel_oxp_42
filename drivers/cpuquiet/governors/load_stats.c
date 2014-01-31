@@ -49,7 +49,7 @@ static LOAD_STATS_STATE load_stats_state;
 static struct workqueue_struct *load_stats_wq;
 
 static unsigned int load_threshold[8] = {85, 20, 85, 40, 85, 40, 0, 50};
-static unsigned int twts_threshold[8] = {80, 0, 160, 320, 210, 210, 0, 160};
+static unsigned int twts_threshold[8] = {80, 0, 160, 320, 240, 240, 0, 160};
 
 extern unsigned int get_rq_info(void);
 

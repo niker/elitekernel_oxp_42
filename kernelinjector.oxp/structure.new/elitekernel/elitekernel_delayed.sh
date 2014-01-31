@@ -1,11 +1,10 @@
 #!/system/bin/sh
 
-sleep 35 
+sleep 60 
 # do the configuration again to override ROM and tegra hardcoded stuff
 
 # run EliteKernel tweaks (overrides ROM tweaks)
 echo "sio" > /sys/block/mmcblk0/queue/scheduler
-echo "sio" > /sys/block/mmcblk1/queue/scheduler
 
 # set governors
 echo "smartmax" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
@@ -46,9 +45,16 @@ sysctl -w vm.dirty_background_ratio=15
 sysctl -w vm.oom_kill_allocating_task=0
 sysctl -w vm.panic_on_oom=0
 sysctl -w vm.overcommit_memory=0
-sysctl -w vm.overcommit_ratio=100
+sysctl -w vm.overcommit_ratio=10
 sysctl -w kernel.panic_on_oops=1
 sysctl -w kernel.panic=10
+
+# sio tweaks
+echo "2" > /sys/block/mmcblk0/queue/iosched/writes_starved
+echo "80" > /sys/block/mmcblk0/queue/iosched/sync_read_expire
+echo "400" > /sys/block/mmcblk0/queue/iosched/sync_write_expire
+echo "240" > /sys/block/mmcblk0/queue/iosched/async_read_expire
+echo "800" > /sys/block/mmcblk0/queue/iosched/async_write_expire
 
 # minfree
 echo "0,1,2,5,7,15" > /sys/module/lowmemorykiller/parameters/adj
