@@ -53,10 +53,10 @@
  * lowering the frequency towards the ideal frequency is faster than below it.
  */
 
-#define DEFAULT_SUSPEND_IDEAL_FREQ T3_LP_MAX_FREQ
+#define DEFAULT_SUSPEND_IDEAL_FREQ 340000
 static unsigned int suspend_ideal_freq;
 
-#define DEFAULT_AWAKE_IDEAL_FREQ T3_LP_MAX_FREQ
+#define DEFAULT_AWAKE_IDEAL_FREQ 640000
 static unsigned int awake_ideal_freq;
 
 /*
@@ -135,7 +135,7 @@ static bool boost = true;
 static unsigned int boost_duration = 0;
 
 /* Consider IO as busy */
-#define DEFAULT_IO_IS_BUSY 1
+#define DEFAULT_IO_IS_BUSY 0
 static unsigned int io_is_busy;
 
 #define DEFAULT_IGNORE_NICE 0
@@ -1320,3 +1320,4 @@ module_exit(cpufreq_smartmax_exit);
 MODULE_AUTHOR("maxwen");
 MODULE_DESCRIPTION("'cpufreq_smartmax' - A smart cpufreq governor");
 MODULE_LICENSE("GPL");
+

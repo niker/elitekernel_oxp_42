@@ -55,7 +55,7 @@ extern unsigned int get_rq_info(void);
 
 static u64 input_boost_end_time = 0;
 static bool input_boost_running = false;
-static unsigned int input_boost_duration = 3 * 80; /* ms */
+static unsigned int input_boost_duration = 10 * 80; /* ms */
 static unsigned int input_boost_cpus = 2;
 static unsigned int input_boost_enabled = true;
 static bool input_boost_task_alive = false;
@@ -79,7 +79,7 @@ struct cpu_load_data {
 };
 
 /* Consider IO as busy */
-static bool io_is_busy = true;
+static bool io_is_busy = false;
 static bool ignore_nice = false;
 
 static DEFINE_PER_CPU(struct cpu_load_data, cpuload);
