@@ -58,7 +58,7 @@ echo "800" > /sys/block/mmcblk0/queue/iosched/async_write_expire
 
 # minfree
 echo "0,1,2,5,7,15" > /sys/module/lowmemorykiller/parameters/adj
-echo "1536,3072,6144,11264,16384,20480" > /sys/module/lowmemorykiller/parameters/minfree
+echo "1536,3072,6144,10240,12288,18432" > /sys/module/lowmemorykiller/parameters/minfree
 
 
 

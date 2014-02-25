@@ -62,8 +62,8 @@ static int cpu_below_core = VDD_CPU_BELOW_VDD_CORE;
 #define VDD_CPU_MIN				700
 #define VDD_CPU_MAX				1250
 
-#define VDD_CPU_DEFAULT_MVS		-25
-#define VDD_CPU_DEFAULT_MVS_UNIFY		-25
+#define VDD_CPU_DEFAULT_MVS		0
+#define VDD_CPU_DEFAULT_MVS_UNIFY		0
 
 #define VDD_CORE_MIN			950
 #define VDD_CORE_MAX			1350
