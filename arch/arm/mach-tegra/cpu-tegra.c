@@ -2479,10 +2479,14 @@ static void tegra_cpufreq_early_suspend(struct early_suspend *h)
 	pr_info("tegra_cpufreq_early_suspend: cap cpu freq to %d\n", suspend_cap_freq);
 	pm_qos_update_request(&cap_cpu_freq_req, (s32)suspend_cap_freq);
 	
-	if (suspend_cap_freq > T3_LP_MAX_FREQ) {
+	//if ((suspend_cap_freq > T3_LP_MAX_FREQ) && (tegra_pmqos_audio == 0)) {
 		pr_info("tegra_cpufreq_early_suspend: cap max cpu to %d\n", suspend_cap_cpu_num);
 		pm_qos_update_request(&cap_cpu_num_req, (s32)suspend_cap_cpu_num);
-	}
+	//}
+	//if ((suspend_cap_freq > T3_LP_MAX_FREQ_AUD) && (tegra_pmqos_audio == 1)) {
+	//	pr_info("tegra_cpufreq_early_suspend: cap max cpu to %d\n", suspend_cap_cpu_num);
+	//	pm_qos_update_request(&cap_cpu_num_req, (s32)suspend_cap_cpu_num);
+	//}
 #if 0
 	unsigned int scaling_min_freq;
 	// TODO: if scaling_min_freq != 51000 is set this will 
@@ -2503,10 +2507,10 @@ static void tegra_cpufreq_late_resume(struct early_suspend *h)
 	pr_info("tegra_cpufreq_late_resume: clean cpu freq cap\n");
 	pm_qos_update_request(&cap_cpu_freq_req, (s32)PM_QOS_CPU_FREQ_MAX_DEFAULT_VALUE);
 
-	if (suspend_cap_freq > T3_LP_MAX_FREQ) {
+	//if (suspend_cap_freq > T3_LP_MAX_FREQ) {
 		pr_info("tegra_cpufreq_late_resume: clean max cpu cap\n");
 		pm_qos_update_request(&cap_cpu_num_req, (s32)PM_QOS_MAX_ONLINE_CPUS_DEFAULT_VALUE);
-	}
+	//}
 
 	// boost at the beginning of the resume
 	pr_info("tegra_cpufreq_late_resume: boost cpu freq\n");

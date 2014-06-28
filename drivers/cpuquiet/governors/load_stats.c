@@ -48,14 +48,29 @@ static unsigned int start_delay = 20000;
 static LOAD_STATS_STATE load_stats_state;
 static struct workqueue_struct *load_stats_wq;
 
-static unsigned int load_threshold[8] = {85, 20, 85, 40, 85, 40, 0, 50};
-static unsigned int twts_threshold[8] = {80, 0, 160, 320, 240, 240, 0, 160};
+static unsigned int load_threshold[8] = {60, // core2 up load
+										 20, // core1 down load
+										 85, // core3 up load
+										 40, // core2 down load
+										 95, // core4 up load
+										 60, // core3 down load
+										 0,  // no more cores load
+										 70  // core4 down load
+										 };
+static unsigned int twts_threshold[8] = {0, 	// core2 up delay
+										 0, 	// core1 down delay
+										 160, 	// core3 up delay
+										 160, 	// core2 down delay
+										 240, 	// core4 up delay
+										 80, 	// core3 down delay
+										 0, 	// no more cores delay
+										 80}; 	// core4 down delay
 
 extern unsigned int get_rq_info(void);
 
 static u64 input_boost_end_time = 0;
 static bool input_boost_running = false;
-static unsigned int input_boost_duration = 10 * 80; /* ms */
+static unsigned int input_boost_duration = 15 * 80; /* ms */
 static unsigned int input_boost_cpus = 2;
 static unsigned int input_boost_enabled = true;
 static bool input_boost_task_alive = false;

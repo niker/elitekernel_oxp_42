@@ -34,8 +34,8 @@ echo "760000" > /sys/devices/system/cpu/cpufreq/ondemand/ux_freq
 echo "20" > /sys/devices/system/cpu/cpufreq/ondemand/ux_loading
 
 # set vm tweaks
-sysctl -w vm.min_free_kbytes=5120
-sysctl -w vm.vfs_cache_pressure=35
+sysctl -w vm.min_free_kbytes=4096
+sysctl -w vm.vfs_cache_pressure=30
 sysctl -w vm.swappiness=20
 sysctl -w vm.page-cluster=0
 sysctl -w vm.dirty_expire_centisecs=2400

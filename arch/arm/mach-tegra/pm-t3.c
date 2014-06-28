@@ -43,6 +43,7 @@
 #include "sleep.h"
 #include "tegra3_emc.h"
 #include "dvfs.h"
+#include "tegra_pmqos.h"
 
 #ifdef CONFIG_TEGRA_CLUSTER_CONTROL
 #define CAR_CCLK_BURST_POLICY \
@@ -355,6 +356,12 @@ int tegra_cluster_control(unsigned int us, unsigned int flags)
 		return -EINVAL;
 
 	if (num_online_cpus() > 1)
+		return -EBUSY;
+		
+	// Do not allow LP core while music is playing		
+	if ((tegra_pmqos_audio == 1)
+	&& !(flags & TEGRA_POWER_CLUSTER_FORCE)
+	&& (target_cluster == TEGRA_POWER_CLUSTER_LP))
 		return -EBUSY;
 
 	if ((current_cluster == target_cluster)

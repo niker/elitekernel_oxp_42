@@ -672,12 +672,12 @@ static int baseband_modem_power_on(struct baseband_power_platform_data *data)
 	if (machine_is_enrc2b() || machine_is_enrc2u())
 	{
 		int counter = 0;
-		const int max_retry = 10;
+		const int max_retry = 3;
 
 		while (!gpio_get_value(data->modem.xmm.bb_rst2) && counter < max_retry)
 		{
 			counter++;
-			mdelay(3);
+			msleep(25);
 		}
 
 		if(counter == max_retry)

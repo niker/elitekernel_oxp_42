@@ -36,8 +36,8 @@ mount -o async,remount,noatime,nodiratime,delalloc,noauto_da_alloc,barrier=0,nob
 mount -o async,remount,noatime,nodiratime,delalloc,noauto_da_alloc,barrier=0,nobh /data /data
 mount -o async,remount,noatime,nodiratime,delalloc,noauto_da_alloc,barrier=0,nobh /sd-ext /sd-ext
 mount -o async,remount,noatime,nodiratime,delalloc,noauto_da_alloc,barrier=0,nobh /devlog /devlog
-echo "2048" > /sys/block/mmcblk0/bdi/read_ahead_kb;
-echo "2048" > /sys/block/mmcblk0/queue/read_ahead_kb;
+echo "3072" > /sys/block/mmcblk0/bdi/read_ahead_kb;
+echo "3072" > /sys/block/mmcblk0/queue/read_ahead_kb;
 
 # activate delayed config to override ROM
 /system/xbin/busybox nohup /system/bin/sh /elitekernel/elitekernel_delayed.sh 2>&1 >/dev/null &

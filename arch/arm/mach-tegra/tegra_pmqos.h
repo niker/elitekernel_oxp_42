@@ -52,6 +52,7 @@
 #define AUD_T3_CPU_MIN_FREQ     102000
 #define PS_AUD_T3_CPU_MIN_FREQ     51000
 #define T3_LP_MAX_FREQ     	475000
+//#define T3_LP_MAX_FREQ_AUD     	340000
 
 
 #define PS_T3_CPU_MAX_FREQ     1150000

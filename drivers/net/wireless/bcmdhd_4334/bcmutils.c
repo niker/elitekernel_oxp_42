@@ -1046,11 +1046,21 @@ bcm_ip_ntoa(struct ipv4_addr *ia, char *buf)
 void
 bcm_mdelay(uint ms)
 {
+	if(ms > 5)
+	{
+		msleep(ms);
+	}
+	else
+	{
+		mdelay(ms);
+	}
+	
+	/*
 	uint i;
 
 	for (i = 0; i < ms; i++) {
 		OSL_DELAY(1000);
-	}
+	}*/
 }
 
 
